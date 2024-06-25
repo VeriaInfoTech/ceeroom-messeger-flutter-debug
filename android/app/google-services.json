@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "419529711102",
+    "project_id": "messenger-67584",
+    "storage_bucket": "messenger-67584.appspot.com"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:419529711102:android:0f08e5c9e493d8ac8ef4af",
+        "android_client_info": {
+          "package_name": "com.ceeroom.messenger"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBc8wITTdqAcOpaKBKAW9YACZv8jCj61oE"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
