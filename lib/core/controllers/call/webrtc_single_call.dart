@@ -19,6 +19,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_callkit_incoming/flutter_callkit_incoming.dart';
 import 'package:flutter_webrtc/flutter_webrtc.dart';
 import 'package:get/get.dart' as getx;
+import 'package:videosdk/videosdk.dart';
 
 typedef StreamStateCallback = void Function(MediaStream stream);
 
@@ -152,6 +153,7 @@ class WebRTCSingleCall {
                 callerCandidates: candidates,
               ),
             );
+
             ///TODO:check reason of use socket in call update in before
             _socketCtl.channel.sink.add(
               SocketService.jsonFormat(
@@ -175,6 +177,84 @@ class WebRTCSingleCall {
     });
   }
 
+  /// call type => 0: voice
+  /// call type => 1: video
+  Future<void> startCallNew({
+    required String callId,
+    required ContactModel contact,
+    required int callType,
+    required Room? meeting,
+  }) async {
+    _contact = contact;
+    call = CallModel(
+      callId: callId,
+      type: callType == 0 ? 'voice' : 'video',
+      callInformation: CallInformationModel(
+        callId: callId,
+        caller: ContactModel(
+          name: _userCtl.user.name,
+          mobile: _userCtl.user.mobile,
+          avatar: _userCtl.user.avatar,
+        ),
+        callType: callType,
+        callStatus: 'Missed',
+        isOnlyData: true,
+      ),
+      receiverMobiles: contact.mobile,
+      extra: ExtraModel(
+        // offerSdp: offer.sdp,
+        users: [
+          _userCtl.user.id!,
+          contact.id!,
+        ],
+        callRingStatus: 'ringing',
+      ),
+    );
+    await _callApi.requestCall(call!);
+    _socketCtl.connect((await _pref.getToken())!);
+
+    _socketCtl.channel.stream.listen((event) async {
+      Map<String, dynamic> resp = jsonDecode(event);
+      switch (resp['action']) {
+        case SocketService.updateCall:
+          call = CallModel.fromJson(resp['data']);
+          if (call!.callInformation!.callStatus == "Reject" ||
+              call!.extra!.callRingStatus == "hangup") {
+            meeting?.end();
+            newEndCall();
+          }
+      }
+    });
+  }
+
+  Future<void> rejectCall({String? callId, bool isDeclined = false}) async {
+    _socketCtl.connect((await _pref.getToken())!);
+    try {
+      call = await getCall(callId!);
+    } catch (e) {
+      debugPrint("Get Call For Clear DB");
+      debugPrint("============================");
+      debugPrint("Something went wrong: $e");
+      debugPrint("============================");
+    }
+    call = call!.copyWith(
+      callInformation: call!.callInformation!.copyWith(
+        callStatus: 'Reject',
+      ),
+      extra: ExtraModel(
+        users: call!.extra!.users,
+      ),
+    );
+
+    ///TODO:check reason of use socket in call update in before
+    _socketCtl.channel.sink.add(
+      SocketService.jsonFormat(
+        action: SocketService.updateCall,
+        data: call!.toJson(),
+      ),
+    );
+  }
+
   Future<void> joinCall(String callId) async {
     whoAreYou = "calle";
     call = await getCall(callId);
@@ -184,6 +264,7 @@ class WebRTCSingleCall {
           callStatus: 'Accept',
         ),
       );
+
       ///TODO:check reason of use socket in call update in before
       _socketCtl.channel.sink.add(
         SocketService.jsonFormat(
@@ -232,6 +313,7 @@ class WebRTCSingleCall {
           calleCandidates: candidates,
         ),
       );
+
       ///TODO:check reason of use socket in call update in before
       _socketCtl.channel.sink.add(
         SocketService.jsonFormat(
@@ -254,6 +336,7 @@ class WebRTCSingleCall {
     call = call!.copyWith(
       extra: call!.extra!.copyWith(answerSdp: answer.sdp),
     );
+
     ///TODO:check reason of use socket in call update in before
     _socketCtl.channel.sink.add(
       SocketService.jsonFormat(
@@ -290,6 +373,26 @@ class WebRTCSingleCall {
     });
   }
 
+  Future<void> newEndCall({bool endFromCallScreen = false}) async {
+    if (whoAreYou == 'caller') {
+      stopBeepRing();
+      disposePlayer();
+    }
+    changeRingStatusToHangUp();
+    if (whoAreYou == 'calle' && appWasClosed) {
+      exit(0);
+    } else if (!endFromCallScreen) {
+      getx.Get.back();
+    } else {
+      getx.Get.back();
+    }
+
+    ///TODO: kerloper => only for ios . add this logic for other calls
+    if (Platform.isIOS) {
+      FlutterCallkitIncoming.endAllCalls();
+    }
+  }
+
   Future<void> endCall({bool endFromCallScreen = false}) async {
     if (whoAreYou == 'caller') {
       stopBeepRing();
@@ -309,11 +412,12 @@ class WebRTCSingleCall {
       } else if (!endFromCallScreen) {
         getx.Get.back();
       }
-    }else{
+    } else {
       getx.Get.back();
     }
+
     ///TODO: kerloper => only for ios . add this logic for other calls
-    if(Platform.isIOS){
+    if (Platform.isIOS) {
       FlutterCallkitIncoming.endAllCalls();
     }
   }
@@ -342,6 +446,7 @@ class WebRTCSingleCall {
             users: call!.extra!.users,
           ),
         );
+
         ///TODO:check reason of use socket in call update in before
         _socketCtl.channel.sink.add(
           SocketService.jsonFormat(
@@ -354,6 +459,7 @@ class WebRTCSingleCall {
         call = call!.copyWith(
           extra: ExtraModel(),
         );
+
         ///TODO:check reason of use socket in call update in before
         _socketCtl.channel.sink.add(
           SocketService.jsonFormat(
@@ -454,7 +560,6 @@ class WebRTCSingleCall {
     return null;
   }
 
-
   // kerloper => for check hangup call from caller when this device is in ringing status
   void listenToRingStatus(String id) async {
     _socketCtl.connect((await _pref.getToken())!);
@@ -472,7 +577,7 @@ class WebRTCSingleCall {
     );
   }
 
-  void changeRingStatusToHangUp() {
+  void changeRingStatusToHangUp() async {
     if (whoAreYou == 'caller' && call!.sender == null) {
       call = call!.copyWith(
         callType: call!.type,
@@ -493,6 +598,9 @@ class WebRTCSingleCall {
         callRingStatus: 'hangup',
       ),
     );
+    print("fdfdfdfd");
+    _socketCtl.connect((await _pref.getToken())!);
+
     ///TODO:check reason of use socket in call update in before
     _socketCtl.channel.sink.add(
       SocketService.jsonFormat(

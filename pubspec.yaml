@@ -30,7 +30,7 @@ dependencies:
   flutter_callkit_incoming: ^2.0.3
   audioplayers: ^6.0.0
   #flutter_webrtc: ^0.9.48+hotfix.1
-  flutter_webrtc: ^0.11.1
+  flutter_webrtc: ^0.10.3
   animated_text_kit: ^4.2.2
   share_plus: ^9.0.0
   responsive_framework: 0.2.0
@@ -45,6 +45,11 @@ dependencies:
   uuid: ^4.2.2
   shared_preferences: ^2.2.2
   image_cropper: ^7.0.5
+  videosdk: 1.1.12
+  flutter_callkeep: ^0.3.4
+  connectycube_flutter_call_kit: ^2.7.0
+  touch_ripple_effect: ^2.2.3
+  flutter_svg: ^2.0.2
 
 dev_dependencies:
   flutter_test:

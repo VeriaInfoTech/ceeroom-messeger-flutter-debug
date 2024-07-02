@@ -91,11 +91,11 @@ class Routes {
           reverseDuration: Duration(milliseconds: transactionReverseDuration),
         );
       case groupProfile:
-        final arg = settings.arguments as Map<String , dynamic>;
+        final arg = settings.arguments as Map<String, dynamic>;
         return PageTransition(
           child: GroupProfileScreen(
             tag: arg['tag'],
-            groupName : arg['groupName'],
+            groupName: arg['groupName'],
             slug: arg['slug'],
           ),
           type: PageTransitionType.bottomToTop,
